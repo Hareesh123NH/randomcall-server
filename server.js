@@ -6,8 +6,6 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 
-const PORT = process.env.PORT || 5000;
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -46,7 +44,7 @@ io.on("connection", (socket) => {
 
    // Chat message
    socket.on("chat-message", (msg) => {
-    console.log(`💬 Message from ${socket.id}:`, msg);
+    //console.log(`💬 Message from ${socket.id}:`, msg);
     // Send message to partner if exists
     socket.partner?.emit("chat-message", msg);
   });
@@ -56,8 +54,15 @@ io.on("connection", (socket) => {
     queue = queue.filter(s => s.id !== socket.id);
     socket.partner?.emit("partner-left");
   });
+  
+
+socket.on("camera-toggle", state => {
+  socket.broadcast.emit("remote-camera-toggle", state);
 });
 
-server.listen(PORT, () =>
+
+});
+
+server.listen(5000, () =>
   console.log("🚀 Server running on port 5000")
 );
