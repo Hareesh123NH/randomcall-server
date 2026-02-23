@@ -44,8 +44,10 @@ io.on("connection", (socket) => {
 
             console.log("🔗 Matched:", user1.id, "↔", user2.id);
 
-            user1.emit("create-offer");
-            user2.emit("wait-offer");
+            setTimeout(() => {
+                user1.emit("create-offer");
+                user2.emit("wait-offer");
+            }, 800);
         }
     });
 
@@ -57,7 +59,7 @@ io.on("connection", (socket) => {
 
     // Chat message
     socket.on("chat-message", (msg) => {
-        //console.log(`💬 Message from ${socket.id}:`, msg);
+        console.log(`💬 Message from ${socket.id}:`, msg);
         // Send message to partner if exists
         socket.partner?.emit("chat-message", msg);
     });
