@@ -3,6 +3,20 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 
+// const WebSocket = require("ws"); // To connect to Python Whisper
+// const fs = require("fs");
+// const { exec } = require("child_process");
+// const path = require("path");
+
+
+// // Connect to Python Whisper server
+// const whisperSocket = new WebSocket("ws://localhost:8765");
+
+// whisperSocket.on("open", () => {
+//     console.log("🟢 Connected to local Whisper server");
+// });
+
+
 const app = express();
 app.use(cors());
 
@@ -64,6 +78,7 @@ io.on("connection", (socket) => {
         socket.partner?.emit("chat-message", msg);
     });
 
+
     socket.on("disconnect", () => {
         console.log("🔴 Disconnected:", socket.id);
         queue = queue.filter(s => s.id !== socket.id);
@@ -74,6 +89,13 @@ io.on("connection", (socket) => {
     socket.on("camera-toggle", state => {
         socket.broadcast.emit("remote-camera-toggle", state);
     });
+
+    socket.on("subtitle", (text) => {
+        console.log(`💬 text from ${socket.id}:`, text);
+        // Send message to partner if exists
+        socket.partner?.emit("subtitle", text);
+    });
+
 
 
 });
