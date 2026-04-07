@@ -26,6 +26,56 @@ const io = new Server(server, {
     cors: { origin: "*" },
 });
 
+// Basic profanity filter
+const badWords = [
+    "fuck", "shit", "bitch", "asshole", "cunt", "dick", "pussy", "bastard", "slut", "whore",
+    "faggot", "nigger", "retard"
+];
+
+function containsBadWords(text) {
+    if (!text || typeof text !== 'string') return false;
+    return badWords.some(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        return regex.test(text);
+    });
+}
+
+function handleMessage(socket, text, eventType) {
+    if (containsBadWords(text)) {
+        const now = Date.now();
+        // Prevent multiple triggers from rapid streamed updates (e.g., streaming subtitles)
+        if (socket.lastBadWordTime && (now - socket.lastBadWordTime < 3000)) {
+            socket.partner?.emit(eventType, "[Hidden by filter]");
+            return true; 
+        }
+        socket.lastBadWordTime = now;
+        
+        socket.badWordCount = (socket.badWordCount || 0) + 1;
+        if (socket.badWordCount === 1) {
+            socket.emit(eventType, "⚠️ Warning: Inappropriate language detected. Next time you will be disconnected.");
+            socket.partner?.emit(eventType, "[Hidden by filter]");
+            return true;
+        } else {
+            let partner = socket.partner;
+            
+            // Clear relationships so the disconnect handler doesn't auto-requeue them
+            socket.partner = null;
+            if (partner) {
+                partner.partner = null;
+                partner.emit(eventType, "⚠️ Call ended due to inappropriate language from partner.");
+                partner.emit("partner-left");
+                partner.disconnect(true);
+            }
+            
+            socket.emit(eventType, "⚠️ You have been disconnected for using inappropriate language.");
+            socket.emit("partner-left");
+            socket.disconnect(true);
+            return true;
+        }
+    }
+    return false;
+}
+
 let queue = [];
 
 const matchUsers = () => {
@@ -104,6 +154,8 @@ io.on("connection", (socket) => {
 
     // Chat message
     socket.on("chat-message", (msg) => {
+        if (handleMessage(socket, msg, "chat-message")) return;
+
         console.log(`💬 Message from ${socket.id}:`, msg);
         // Send message to partner if exists
         socket.partner?.emit("chat-message", msg);
@@ -164,6 +216,8 @@ io.on("connection", (socket) => {
     });
 
     socket.on("subtitle", (text) => {
+        if (handleMessage(socket, text, "subtitle")) return;
+
         console.log(`💬 text from ${socket.id}:`, text);
         // Send message to partner if exists
         socket.partner?.emit("subtitle", text);
